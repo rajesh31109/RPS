@@ -136,165 +136,195 @@
   </main>
 
   <script>
-    // Star field background
-    function createStars() {
-      const starsContainer = document.getElementById('starsContainer');
-      const numberOfStars = 110;
-      for (let i = 0; i < numberOfStars; i++) {
-        const star = document.createElement('div');
-        star.className = 'star moving-star';
-        star.style.left = Math.random() * 100 + '%';
-        star.style.top = Math.random() * 100 + '%';
-        const size = Math.random() * 3 + 1;
-        star.style.width = size + 'px';
-        star.style.height = size + 'px';
-        star.style.animationDelay = Math.random() * 3 + 's';
-        starsContainer.appendChild(star);
-      }
+  // 🌟 Star field background
+  function createStars() {
+    const starsContainer = document.getElementById('starsContainer');
+    const numberOfStars = 110;
+    for (let i = 0; i < numberOfStars; i++) {
+      const star = document.createElement('div');
+      star.className = 'star moving-star';
+      star.style.left = Math.random() * 100 + '%';
+      star.style.top = Math.random() * 100 + '%';
+      const size = Math.random() * 3 + 1;
+      star.style.width = size + 'px';
+      star.style.height = size + 'px';
+      star.style.animationDelay = Math.random() * 3 + 's';
+      starsContainer.appendChild(star);
+    }
+  }
+
+  // 🎮 Game Variables
+  let playerScore = 0, computerScore = 0, tieScore = 0;
+  let isListening = false, recognition;
+  const choices = {
+    rock: { emoji: '🪨', beats: 'scissors' },
+    paper: { emoji: '📄', beats: 'rock' },
+    scissors: { emoji: '✂️', beats: 'paper' }
+  };
+
+  // 🧠 Speech Recognition Utilities
+  function isSpeechRecognitionSupported() {
+    return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+  }
+
+  function getRecognitionObject() {
+    return window.SpeechRecognition ? new window.SpeechRecognition() :
+           window.webkitSpeechRecognition ? new window.webkitSpeechRecognition() : null;
+  }
+
+  function initSpeechRecognition() {
+    if (!isSpeechRecognitionSupported()) {
+      document.getElementById('voiceStatus').textContent =
+        '❌ Voice recognition not supported in this browser';
+      document.getElementById('voiceBtn').style.display = 'none';
+      return;
     }
 
-    let playerScore = 0, computerScore = 0, tieScore = 0;
-    let isListening = false, recognition;
-    const choices = {
-      rock: { emoji: '🪨', beats: 'scissors' },
-      paper: { emoji: '📄', beats: 'rock' },
-      scissors: { emoji: '✂️', beats: 'paper' }
+    recognition = getRecognitionObject();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      isListening = true;
+      updateVoiceUI();
+      document.getElementById('voiceStatus').textContent =
+        '🎯 Listening... Say "rock", "paper", or "scissors"';
     };
 
-    function isSpeechRecognitionSupported() {
-      return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
-    }
-
-    function getRecognitionObject() {
-      return window.SpeechRecognition ? new window.SpeechRecognition() :
-             window.webkitSpeechRecognition ? new window.webkitSpeechRecognition() : null;
-    }
-
-    let recognitionInitialized = false;
-
-    function initSpeechRecognition() {
-      if (!isSpeechRecognitionSupported()) {
-        document.getElementById('voiceStatus').textContent = '❌ Voice recognition not supported in this browser';
-        document.getElementById('voiceBtn').style.display = 'none';
-        return;
-      }
-      if (recognitionInitialized) return;
-      recognition = getRecognitionObject();
-      recognition.continuous = false;
-      recognition.interimResults = false;
-      recognition.lang = 'en-US';
-      recognitionInitialized = true;
-
-      recognition.onstart = function() {
-        isListening = true;
-        updateVoiceUI();
-        document.getElementById('voiceStatus').textContent = '🎯 Listening... Say "rock", "paper", or "scissors"';
-      };
-
-      recognition.onresult = function(event) {
-        if(!event.results || !event.results[0] || !event.results[0][0]) return;
-        const result = event.results[0][0].transcript.toLowerCase().trim();
-        if (result.includes('rock')) playGame('rock');
-        else if (result.includes('paper')) playGame('paper');
-        else if (result.includes('scissors') || result.includes('scissor')) playGame('scissors');
-        else document.getElementById('voiceStatus').textContent = '❌ Say "rock", "paper", or "scissors". Try again!';
-      };
-
-      recognition.onerror = function() {
-        document.getElementById('voiceStatus').textContent = '⚠️ Voice recognition error. Try again!';
-        isListening = false;
-        updateVoiceUI();
-      };
-
-      recognition.onend = function() {
-        isListening = false;
-        updateVoiceUI();
-        if (document.getElementById('voiceStatus').textContent.includes('Listening')) {
-          document.getElementById('voiceStatus').textContent = 'Click the microphone and say "rock", "paper", or "scissors"';
-        }
-      };
-    }
-
-    function toggleVoiceRecognition() {
-      if (!recognitionInitialized) initSpeechRecognition();
-      if (!recognition) return;
-      if (isListening) {
-        recognition.stop();
-      } else {
-        try {
-          recognition.start();
-        } catch (e) {
-          document.getElementById('voiceStatus').textContent = '❌ Failed to start voice recognition. Try again!';
-        }
-      }
-    }
-    function updateVoiceUI() {
-      const voiceBtn = document.getElementById('voiceBtn');
-      const pulseRing = document.getElementById('pulseRing');
-      if (isListening) {
-        voiceBtn.textContent = '🔴 Stop Listening';
-        voiceBtn.className = voiceBtn.className.replace('from-pink-500 to-red-500', 'from-blue-500 to-cyan-500');
-        pulseRing.style.opacity = '0.25';
-      } else {
-        voiceBtn.textContent = '🎤 Start Voice Recognition';
-        voiceBtn.className = voiceBtn.className.replace('from-blue-500 to-cyan-500', 'from-pink-500 to-red-500');
-        pulseRing.style.opacity = '0';
-      }
-    }
-
-    function getComputerChoice() {
-      return ['rock', 'paper', 'scissors'][Math.floor(Math.random() * 3)];
-    }
-    function determineWinner(playerChoice, computerChoice) {
-      if (playerChoice === computerChoice) return 'tie';
-      return (choices[playerChoice].beats === computerChoice) ? 'win' : 'lose';
-    }
-    function playGame(playerChoice) {
-      const computerChoice = getComputerChoice();
-      const result = determineWinner(playerChoice, computerChoice);
-      if (result === 'win') playerScore++;
-      else if (result === 'lose') computerScore++;
-      else tieScore++;
-      updateScores();
-      displayResult(playerChoice, computerChoice, result);
-      if (isListening && recognition) recognition.stop();
-    }
-    function updateScores() {
-      document.getElementById('playerScore').textContent = playerScore;
-      document.getElementById('computerScore').textContent = computerScore;
-      document.getElementById('tieScore').textContent = tieScore;
-    }
-    function displayResult(playerChoice, computerChoice, result) {
-      document.getElementById('playerChoice').textContent = choices[playerChoice].emoji;
-      document.getElementById('computerChoice').textContent = choices[computerChoice].emoji;
-      let resultMessage = '', resultClass = '';
-      if (result === 'win') { resultMessage = '🎉 You Win!'; resultClass = 'text-green-400';}
-      else if (result === 'lose') { resultMessage = '😔 You Lose!'; resultClass = 'text-red-400';}
-      else { resultMessage = '🤝 It\'s a Tie!'; resultClass = 'text-yellow-400';}
-      const resultText = document.getElementById('resultText');
-      resultText.textContent = resultMessage;
-      resultText.className = `text-2xl md:text-3xl font-black ${resultClass}`;
-      document.getElementById('gameResult').classList.remove('hidden');
-    }
-    function resetGame() {
-      playerScore = 0; computerScore = 0; tieScore = 0;
-      updateScores();
-      document.getElementById('gameResult').classList.add('hidden');
-      document.getElementById('voiceStatus').textContent = 'Click the microphone and say "rock", "paper", or "scissors"';
-      if (isListening && recognition) recognition.stop();
-    }
-
-    // App initialize
-    window.onload = function() {
-      createStars();
-      updateScores();
-      setTimeout(()=>{
-        document.getElementById('welcomeScreen').style.display = 'none';
-        document.getElementById('gameDashboard').classList.remove('hidden');
-        document.body.style.overflow = 'auto';
-        initSpeechRecognition(); // Initialize on load for Chrome permissions prompt
-      }, 1800);
+    recognition.onresult = (event) => {
+      const result = event.results[0][0].transcript.toLowerCase().trim();
+      if (result.includes('rock')) playGame('rock');
+      else if (result.includes('paper')) playGame('paper');
+      else if (result.includes('scissors') || result.includes('scissor'))
+        playGame('scissors');
+      else
+        document.getElementById('voiceStatus').textContent =
+          '❌ Say "rock", "paper", or "scissors". Try again!';
     };
-  </script>
+
+    recognition.onerror = () => {
+      document.getElementById('voiceStatus').textContent =
+        '⚠️ Voice recognition error. Try again!';
+      isListening = false;
+      updateVoiceUI();
+    };
+
+    recognition.onend = () => {
+      isListening = false;
+      updateVoiceUI();
+      document.getElementById('voiceStatus').textContent =
+        'Click the microphone and say "rock", "paper", or "scissors"';
+    };
+  }
+
+  // 🎤 Toggle Voice Recognition
+  function toggleVoiceRecognition() {
+    if (!recognition) initSpeechRecognition();
+    if (!recognition) return;
+
+    if (isListening) recognition.stop();
+    else {
+      recognition.abort && recognition.abort(); // reset if stuck
+      recognition.start();
+    }
+  }
+
+  // 🎛️ Update Voice Button UI
+  function updateVoiceUI() {
+    const voiceBtn = document.getElementById('voiceBtn');
+    const pulseRing = document.getElementById('pulseRing');
+    if (isListening) {
+      voiceBtn.textContent = '🔴 Stop Listening';
+      voiceBtn.className = voiceBtn.className.replace(
+        'from-pink-500 to-red-500',
+        'from-blue-500 to-cyan-500'
+      );
+      pulseRing.style.opacity = '0.25';
+    } else {
+      voiceBtn.textContent = '🎤 Start Voice Recognition';
+      voiceBtn.className = voiceBtn.className.replace(
+        'from-blue-500 to-cyan-500',
+        'from-pink-500 to-red-500'
+      );
+      pulseRing.style.opacity = '0';
+    }
+  }
+
+  // 🧩 Game Logic
+  function getComputerChoice() {
+    return ['rock', 'paper', 'scissors'][Math.floor(Math.random() * 3)];
+  }
+
+  function determineWinner(playerChoice, computerChoice) {
+    if (playerChoice === computerChoice) return 'tie';
+    return choices[playerChoice].beats === computerChoice ? 'win' : 'lose';
+  }
+
+  function playGame(playerChoice) {
+    const computerChoice = getComputerChoice();
+    const result = determineWinner(playerChoice, computerChoice);
+
+    if (result === 'win') playerScore++;
+    else if (result === 'lose') computerScore++;
+    else tieScore++;
+
+    updateScores();
+    displayResult(playerChoice, computerChoice, result);
+    if (isListening && recognition) recognition.stop();
+  }
+
+  function updateScores() {
+    document.getElementById('playerScore').textContent = playerScore;
+    document.getElementById('computerScore').textContent = computerScore;
+    document.getElementById('tieScore').textContent = tieScore;
+  }
+
+  function displayResult(playerChoice, computerChoice, result) {
+    document.getElementById('playerChoice').textContent = choices[playerChoice].emoji;
+    document.getElementById('computerChoice').textContent = choices[computerChoice].emoji;
+
+    let resultMessage = '', resultClass = '';
+    if (result === 'win') {
+      resultMessage = '🎉 You Win!';
+      resultClass = 'text-green-400';
+    } else if (result === 'lose') {
+      resultMessage = '😔 You Lose!';
+      resultClass = 'text-red-400';
+    } else {
+      resultMessage = '🤝 It\'s a Tie!';
+      resultClass = 'text-yellow-400';
+    }
+
+    const resultText = document.getElementById('resultText');
+    resultText.textContent = resultMessage;
+    resultText.className = `text-2xl md:text-3xl font-black ${resultClass}`;
+    document.getElementById('gameResult').classList.remove('hidden');
+  }
+
+  function resetGame() {
+    playerScore = 0;
+    computerScore = 0;
+    tieScore = 0;
+    updateScores();
+    document.getElementById('gameResult').classList.add('hidden');
+    document.getElementById('voiceStatus').textContent =
+      'Click the microphone and say "rock", "paper", or "scissors"';
+    if (isListening && recognition) recognition.stop();
+  }
+
+  // 🚀 Initialization
+  window.onload = function () {
+    createStars();
+    updateScores();
+
+    // Welcome Screen Animation
+    setTimeout(() => {
+      document.getElementById('welcomeScreen').classList.add('hidden');
+      document.getElementById('gameDashboard').classList.remove('hidden');
+    }, 2500);
+  };
+</script>
 </body>
 </html>
+
