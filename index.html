@@ -9,12 +9,12 @@
   <style>
     body { font-family: 'Orbitron', monospace; }
     .glass { background:rgba(255,255,255,0.10); backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,0.10); }
-    .glass-dark { background:rgba(40,40,80,0.27); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.13);}
-    .stars { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0;}
-    .star { position:absolute; background:white; border-radius:50%; animation:twinkle 3s infinite;}
-    .star:nth-child(odd){ animation-delay:1.5s;}
+    .glass-dark { background:rgba(40,40,80,0.27); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.13); }
+    .stars { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; }
+    .star { position:absolute; background:white; border-radius:50%; animation:twinkle 3s infinite; }
+    .star:nth-child(odd){ animation-delay:1.5s; }
     @keyframes twinkle { 0%,100%{ opacity:0.4; transform:scale(1);} 50%{opacity:1; transform:scale(1.2);} }
-    .moving-star{ animation:moveStars 8s infinite ease-in-out;}
+    .moving-star{ animation:moveStars 8s infinite ease-in-out; }
     @keyframes moveStars {
       0%{ transform:translateY(0) translateX(0);}
       25%{transform:translateY(-10px) translateX(5px);}
@@ -22,7 +22,7 @@
       75%{transform:translateY(-15px) translateX(8px);}
       100%{transform:translateY(0) translateX(0);}
     }
-    .pulse-ring { animation: pulse-ring 1.5s cubic-bezier(0.215,0.61,0.355,1) infinite;}
+    .pulse-ring { animation: pulse-ring 1.5s cubic-bezier(0.215,0.61,0.355,1) infinite; }
     @keyframes pulse-ring {
       0% {transform: scale(.33); opacity: 1;}
       80%,100% {transform: scale(2.33); opacity: 0;}
@@ -86,7 +86,7 @@
         <div class="relative mb-2">
           <button id="voiceBtn"
             class="relative z-10 bg-gradient-to-r from-pink-500 to-red-500 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-3 px-8 rounded-full text-lg shadow-lg transition-all"
-            onclick="toggleVoiceRecognition()">
+            type="button">
             🎤 Start Voice Recognition
           </button>
           <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -123,6 +123,7 @@
           🔄 Reset Game
         </button>
       </div>
+
       <!-- Instructions -->
       <div class="glass-dark rounded-xl p-4 mt-8 text-sm text-blue-200">
         <div class="font-bold text-white mb-2">🎯 How to play:</div>
@@ -136,6 +137,10 @@
   </main>
 
   <script>
+  // ----------------------------
+  // Improved Voice RPS — Single script (copy/paste whole file)
+  // ----------------------------
+
   // 🌟 Star field background
   function createStars() {
     const starsContainer = document.getElementById('starsContainer');
@@ -155,7 +160,7 @@
 
   // 🎮 Game Variables
   let playerScore = 0, computerScore = 0, tieScore = 0;
-  let isListening = false, recognition;
+  let isListening = false, recognition = null;
   const choices = {
     rock: { emoji: '🪨', beats: 'scissors' },
     paper: { emoji: '📄', beats: 'rock' },
@@ -164,69 +169,98 @@
 
   // 🧠 Speech Recognition Utilities
   function isSpeechRecognitionSupported() {
-    return 'webkitSpeechRecognition' in window || 'SpeechRecognition' in window;
+    return !!(window.SpeechRecognition || window.webkitSpeechRecognition);
   }
 
   function getRecognitionObject() {
-    return window.SpeechRecognition ? new window.SpeechRecognition() :
-           window.webkitSpeechRecognition ? new window.webkitSpeechRecognition() : null;
+    if (window.SpeechRecognition) return new window.SpeechRecognition();
+    if (window.webkitSpeechRecognition) return new window.webkitSpeechRecognition();
+    return null;
   }
 
-  function initSpeechRecognition() {
+  // initialize recognition object and handlers (called on first user click)
+  function initRecognitionIfNeeded() {
+    if (recognition) return;
     if (!isSpeechRecognitionSupported()) {
-      document.getElementById('voiceStatus').textContent =
-        '❌ Voice recognition not supported in this browser';
+      document.getElementById('voiceStatus').textContent = '❌ Voice recognition not supported in this browser';
       document.getElementById('voiceBtn').style.display = 'none';
       return;
     }
 
     recognition = getRecognitionObject();
+    if (!recognition) {
+      document.getElementById('voiceStatus').textContent = '❌ Failed to create recognition object';
+      document.getElementById('voiceBtn').style.display = 'none';
+      return;
+    }
+
     recognition.continuous = false;
     recognition.interimResults = false;
-    recognition.lang = 'en-US';
+    recognition.lang = 'en-US'; // you can change to 'en-IN' if preferred
 
     recognition.onstart = () => {
+      console.debug('Speech recognition started');
       isListening = true;
       updateVoiceUI();
-      document.getElementById('voiceStatus').textContent =
-        '🎯 Listening... Say "rock", "paper", or "scissors"';
+      document.getElementById('voiceStatus').textContent = '🎯 Listening... Say "rock", "paper", or "scissors"';
     };
 
     recognition.onresult = (event) => {
-      const result = event.results[0][0].transcript.toLowerCase().trim();
-      if (result.includes('rock')) playGame('rock');
-      else if (result.includes('paper')) playGame('paper');
-      else if (result.includes('scissors') || result.includes('scissor'))
-        playGame('scissors');
-      else
-        document.getElementById('voiceStatus').textContent =
-          '❌ Say "rock", "paper", or "scissors". Try again!';
+      try {
+        const transcript = (event.results && event.results[0] && event.results[0][0] && event.results[0][0].transcript) || '';
+        const result = transcript.toLowerCase().trim();
+        console.debug('Transcript:', result);
+        // Loose matching: handles small variants like "rocks", "scissor", etc.
+        if (result.includes('rock')) playGame('rock');
+        else if (result.includes('paper')) playGame('paper');
+        else if (result.includes('scissor') || result.includes('scissors')) playGame('scissors');
+        else document.getElementById('voiceStatus').textContent = '❌ Say "rock", "paper", or "scissors". Try again!';
+      } catch (err) {
+        console.error('onresult handler error', err);
+        document.getElementById('voiceStatus').textContent = '⚠️ Recognition error—try again';
+      }
     };
 
-    recognition.onerror = () => {
-      document.getElementById('voiceStatus').textContent =
-        '⚠️ Voice recognition error. Try again!';
+    recognition.onerror = (event) => {
+      console.warn('Speech recognition error', event);
+      // show helpful messages for common errors
+      const errText = (event && event.error) ? event.error : 'unknown';
+      if (errText === 'not-allowed' || errText === 'permission-denied') {
+        document.getElementById('voiceStatus').textContent = '❌ Microphone permission blocked. Allow mic and try again.';
+      } else if (errText === 'no-speech') {
+        document.getElementById('voiceStatus').textContent = '❌ No speech detected. Try again.';
+      } else {
+        document.getElementById('voiceStatus').textContent = '⚠️ Voice recognition error (' + errText + '). Try again!';
+      }
       isListening = false;
       updateVoiceUI();
     };
 
     recognition.onend = () => {
+      console.debug('Speech recognition ended');
       isListening = false;
       updateVoiceUI();
-      document.getElementById('voiceStatus').textContent =
-        'Click the microphone and say "rock", "paper", or "scissors"';
+      // keep status prompt friendly
+      document.getElementById('voiceStatus').textContent = 'Click the microphone and say "rock", "paper", or "scissors"';
     };
   }
 
-  // 🎤 Toggle Voice Recognition
-  function toggleVoiceRecognition() {
-    if (!recognition) initSpeechRecognition();
+  // 🎤 Toggle Voice Recognition (attached to button)
+  function toggleVoiceRecognitionHandler() {
+    initRecognitionIfNeeded();
     if (!recognition) return;
 
-    if (isListening) recognition.stop();
-    else {
-      recognition.abort && recognition.abort(); // reset if stuck
-      recognition.start();
+    if (isListening) {
+      try { recognition.stop(); } catch(e){ console.warn('stop error',e); }
+    } else {
+      try {
+        // Some browsers throw if start() is called too quickly — abort first to be safe
+        recognition.abort && recognition.abort();
+        recognition.start();
+      } catch (e) {
+        console.error('Failed to start recognition', e);
+        document.getElementById('voiceStatus').textContent = '❌ Failed to start voice recognition. Try again!';
+      }
     }
   }
 
@@ -234,19 +268,15 @@
   function updateVoiceUI() {
     const voiceBtn = document.getElementById('voiceBtn');
     const pulseRing = document.getElementById('pulseRing');
+    if (!voiceBtn) return;
     if (isListening) {
       voiceBtn.textContent = '🔴 Stop Listening';
-      voiceBtn.className = voiceBtn.className.replace(
-        'from-pink-500 to-red-500',
-        'from-blue-500 to-cyan-500'
-      );
+      // safe replace: if substring not present, keep original classes
+      voiceBtn.className = voiceBtn.className.replace('from-pink-500 to-red-500', 'from-blue-500 to-cyan-500');
       pulseRing.style.opacity = '0.25';
     } else {
       voiceBtn.textContent = '🎤 Start Voice Recognition';
-      voiceBtn.className = voiceBtn.className.replace(
-        'from-blue-500 to-cyan-500',
-        'from-pink-500 to-red-500'
-      );
+      voiceBtn.className = voiceBtn.className.replace('from-blue-500 to-cyan-500', 'from-pink-500 to-red-500');
       pulseRing.style.opacity = '0';
     }
   }
@@ -262,6 +292,7 @@
   }
 
   function playGame(playerChoice) {
+    if (!choices[playerChoice]) return;
     const computerChoice = getComputerChoice();
     const result = determineWinner(playerChoice, computerChoice);
 
@@ -271,7 +302,11 @@
 
     updateScores();
     displayResult(playerChoice, computerChoice, result);
-    if (isListening && recognition) recognition.stop();
+
+    // Stop listening after result so user can hear/see result
+    if (isListening && recognition) {
+      try { recognition.stop(); } catch(e){ console.warn('stop after play error', e); }
+    }
   }
 
   function updateScores() {
@@ -285,16 +320,9 @@
     document.getElementById('computerChoice').textContent = choices[computerChoice].emoji;
 
     let resultMessage = '', resultClass = '';
-    if (result === 'win') {
-      resultMessage = '🎉 You Win!';
-      resultClass = 'text-green-400';
-    } else if (result === 'lose') {
-      resultMessage = '😔 You Lose!';
-      resultClass = 'text-red-400';
-    } else {
-      resultMessage = '🤝 It\'s a Tie!';
-      resultClass = 'text-yellow-400';
-    }
+    if (result === 'win') { resultMessage = '🎉 You Win!'; resultClass = 'text-green-400'; }
+    else if (result === 'lose') { resultMessage = '😔 You Lose!'; resultClass = 'text-red-400'; }
+    else { resultMessage = '🤝 It\'s a Tie!'; resultClass = 'text-yellow-400'; }
 
     const resultText = document.getElementById('resultText');
     resultText.textContent = resultMessage;
@@ -303,28 +331,41 @@
   }
 
   function resetGame() {
-    playerScore = 0;
-    computerScore = 0;
-    tieScore = 0;
+    playerScore = 0; computerScore = 0; tieScore = 0;
     updateScores();
     document.getElementById('gameResult').classList.add('hidden');
-    document.getElementById('voiceStatus').textContent =
-      'Click the microphone and say "rock", "paper", or "scissors"';
-    if (isListening && recognition) recognition.stop();
+    document.getElementById('voiceStatus').textContent = 'Click the microphone and say "rock", "paper", or "scissors"';
+    if (isListening && recognition) {
+      try { recognition.stop(); } catch(e){ console.warn('reset stop error', e); }
+    }
+  }
+
+  // Attach event listeners (use addEventListener to ensure user gesture)
+  function attachUIHandlers() {
+    const voiceBtn = document.getElementById('voiceBtn');
+    if (voiceBtn) voiceBtn.addEventListener('click', toggleVoiceRecognitionHandler);
+    // allow keyboard activation with Enter/Space too:
+    voiceBtn && voiceBtn.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') toggleVoiceRecognitionHandler();
+    });
   }
 
   // 🚀 Initialization
-  window.onload = function () {
+  window.addEventListener('load', () => {
     createStars();
     updateScores();
+    attachUIHandlers();
 
-    // Welcome Screen Animation
+    // Show game after welcome (keeps initial UX)
     setTimeout(() => {
       document.getElementById('welcomeScreen').classList.add('hidden');
       document.getElementById('gameDashboard').classList.remove('hidden');
-    }, 2500);
-  };
-</script>
+    }, 1800);
+
+    // Helpful console info for debugging
+    console.info('Page loaded. SpeechRecognition supported:', isSpeechRecognitionSupported());
+  });
+  </script>
 </body>
 </html>
 
