@@ -41,14 +41,34 @@
     .score-label {
       color: #AEEAFF; /* bright blue text */
       font-weight: 700;
-      letter-spacing: 1px;
+      letter-spacing: 0.6px;
+      line-height: 1;
+      white-space: nowrap;         /* prevent wrapping */
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: 0.95rem;
     }
+
+    /* Ensure score cards stack vertically and keep label + number separate */
+    .score-card { display: flex; flex-direction: column; align-items:center; justify-content:center; gap:6px; min-height:84px; }
 
     @media (max-width: 640px) {
       .game-container {
         padding: 1rem;
       }
+      .score-label { font-size: 0.85rem; letter-spacing: 0.4px; }
+      .score-card { min-height:74px; }
     }
+
+    /* small phones: make labels even smaller so "COMPUTER" never overflows */
+    @media (max-width: 420px) {
+      .score-label { font-size: 0.72rem; letter-spacing: 0.2px; }
+      .choice-btn { min-w:90px; min-h:90px; padding:1rem; }
+    }
+
+    /* slightly increase number weight for small screens */
+    .score-number { font-weight: 900; line-height:1; }
+
   </style>
 </head>
 <body class="bg-gradient-to-tr from-blue-900 via-purple-900 to-indigo-900 min-h-screen">
@@ -78,17 +98,18 @@
       <!-- Scoreboard -->
       <div class="rounded-2xl p-6 mb-8 bg-white/5 glass">
         <div class="grid grid-cols-3 gap-5 text-center">
-          <div class="glass-dark rounded-xl p-4">
+          <div class="glass-dark rounded-xl p-4 score-card">
             <div class="score-label">YOU</div>
-            <div id="playerScore" class="text-3xl md:text-4xl font-black text-green-400">0</div>
+            <div id="playerScore" class="text-3xl md:text-4xl score-number text-green-400">0</div>
           </div>
-          <div class="glass-dark rounded-xl p-4">
+          <div class="glass-dark rounded-xl p-4 score-card">
+            <!-- Changed label to "COMPUTER" and applied no-wrap so it never breaks -->
             <div class="score-label">COMPUTER</div>
-            <div id="computerScore" class="text-3xl md:text-4xl font-black text-red-400">0</div>
+            <div id="computerScore" class="text-3xl md:text-4xl score-number text-red-400">0</div>
           </div>
-          <div class="glass-dark rounded-xl p-4">
+          <div class="glass-dark rounded-xl p-4 score-card">
             <div class="score-label">TIES</div>
-            <div id="tieScore" class="text-3xl md:text-4xl font-black text-yellow-400">0</div>
+            <div id="tieScore" class="text-3xl md:text-4xl score-number text-yellow-400">0</div>
           </div>
         </div>
       </div>
@@ -306,3 +327,4 @@
   </script>
 </body>
 </html>
+
